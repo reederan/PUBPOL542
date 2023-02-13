@@ -56,14 +56,10 @@ sanitationcsv = sanitationcsv[[
     'Year',
     'Access to limited drinking water',
     'Access to limited sanitation services',
-    'Access to limited handwashing facilities',
-    'Number with access to limited drinking water',
-    'Number with access to limited sanitation services',
-    'Number with access to limited handwashing facilities',
 ]]
 
 sanitationcsv.head()
-sanitationcsv = sanitationcsv[(sanitationcsv['Year'] >= 2015) & (sanitationcsv['Year'] <= 2019)]
+sanitationcsv = sanitationcsv[(sanitationcsv['Year'] == 2019)]
 sanitationcsv.head()
 sanitationcsv=sanitationcsv.reset_index(drop=True)
 sanitationcsv.head()
@@ -78,30 +74,6 @@ sanitationcsv.columns.str.replace(pat="Access to limited sanitation services",
                                   regex=False)
 sanitationcsv.columns=sanitationcsv.columns.str.replace("Access to limited sanitation services",
                                                         "LSS",
-                                                        regex=False)
-sanitationcsv.columns.str.replace(pat="Access to limited handwashing facilities", 
-                                  repl="LHF", 
-                                  regex=False)
-sanitationcsv.columns=sanitationcsv.columns.str.replace("Access to limited handwashing facilities",
-                                                        "LHF",
-                                                        regex=False)
-sanitationcsv.columns.str.replace(pat="Number with access to limited drinking water", 
-                                  repl="#LDW", 
-                                  regex=False)
-sanitationcsv.columns=sanitationcsv.columns.str.replace("Number with access to limited drinking water",
-                                                        "#LDW",
-                                                        regex=False)
-sanitationcsv.columns.str.replace(pat="Number with access to limited sanitation services", 
-                                  repl="#LSS", 
-                                  regex=False)
-sanitationcsv.columns=sanitationcsv.columns.str.replace("Number with access to limited sanitation services",
-                                                        "#LSS",
-                                                        regex=False)
-sanitationcsv.columns.str.replace(pat="Number with access to limited handwashing facilities", 
-                                  repl="#LHF", 
-                                  regex=False)
-sanitationcsv.columns=sanitationcsv.columns.str.replace("Number with access to limited handwashing facilities",
-                                                        "#LHF",
                                                         regex=False)
 sanitationcsv.columns.str.replace(pat="Entity", 
                                   repl="Country", 
@@ -165,7 +137,7 @@ merged
 merged
 
 
-
+merged.to_csv("mergeddeliverable2.csv", index=False)
 
 
 
