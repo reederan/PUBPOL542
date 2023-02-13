@@ -1,0 +1,258 @@
+---
+title: "542 Deliverable 2"
+date: 2.11.23
+output: html_notebook
+---
+
+```{r}
+##Loading in data
+location ='https://github.com/Drops-of-Jupyter/PUBPOL542/raw/main/'
+file ='mergeddeliverable2.csv'
+datalink = paste0(location,file)
+
+deliv2data = read.csv(datalink)
+##Identifying data types
+str(deliv2data)
+```
+
+```{r}
+##Setting the random seed
+set.seed(999)
+```
+
+```{r}
+deliv2data[!complete.cases(deliv2data),-c(1,2)]
+```
+
+```{r}
+#Dropping the columns with many missing variables
+deliv2data_noNA=deliv2data
+deliv2data_noNA$X.LHF=NULL
+deliv2data_noNA$LHF=NULL
+```
+
+```{r}
+#checking for more
+deliv2data_noNA[!complete.cases(deliv2data_noNA),]
+```
+
+```{r}
+deliv2data_noNA=deliv2data_noNA[complete.cases(deliv2data_noNA),]
+```
+
+```{r}
+#looking at value ranges
+boxplot(deliv2data_noNA[,-c(1,2)])
+```
+
+```{r}
+##adjusting scale due to box plot analysis
+deliv2data_noNA[,-c(1,2)]=as.data.frame(scale(deliv2data_noNA[,-c(1,2)]))
+```
+
+```{r}
+##replotting
+boxplot(deliv2data_noNA[,-c(1,2)])
+```
+
+```{r}
+##Subsetting the data and checking it worked
+dataToCluster=deliv2data_noNA[,-c(1,2)]
+row.names(dataToCluster)=deliv2data_noNA$Country
+head(dataToCluster)
+```
+
+```{r}
+##Deciding distance method and computing the distance matrix using gower measurement
+library(cluster)
+distanceMatrix=daisy(x=dataToCluster, metric = "gower")
+```
+
+```{r}
+##Producing 2 dimensional map
+projectedData = cmdscale(distanceMatrix, k=2)
+```
+
+```{r}
+##saving coordinates to original dataframe
+deliv2data_noNA$dim1 = projectedData[,1]
+deliv2data_noNA$dim2 = projectedData[,2]
+##looking at some of the coordinates
+deliv2data_noNA[,c('dim1','dim2')][1:10,]
+```
+
+```{r}
+##Seeing map of cases
+library(ggplot2)
+base= ggplot(data=deliv2data_noNA,
+             aes(x=dim1, y=dim2,
+                 label=Country)) 
+base + geom_text(size=2)
+```
+
+```{r}
+##Creating dendogram for alternate visualization
+hc = hclust(distanceMatrix)
+plot(hc,hang = -1,cex=0.5)
+```
+
+Computing clustering suggestions
+
+```{r}
+##Agglomerative
+library(factoextra)
+
+fviz_nbclust(dataToCluster, 
+             hcut,
+             diss=distanceMatrix,
+             method = "gap_stat",
+             k.max = 10,
+             verbose = F,
+             hc_func = "agnes")
+##divisive
+fviz_nbclust(dataToCluster, 
+             hcut,
+             diss=distanceMatrix,
+             method = "gap_stat",
+             k.max = 10,
+             verbose = F,
+             hc_func = "diana")
+```
+
+```{r}
+NumberOfClusterDesired=5
+
+res.agnes= hcut(distanceMatrix, 
+                k = NumberOfClusterDesired,
+                isdiss=TRUE,
+                hc_func='agnes',
+                hc_method = "ward.D2")
+
+# Hierarchical technique- divisive approach
+res.diana= hcut(distanceMatrix, 
+                k = NumberOfClusterDesired,
+                isdiss=TRUE,
+                hc_func='diana',
+                hc_method = "ward.D2")
+```
+
+```{r}
+deliv2data_noNA$agn=as.factor(res.agnes$cluster)
+deliv2data_noNA$dia=as.factor(res.diana$cluster)
+```
+
+```{r}
+aggregate(data=deliv2data_noNA,
+          Death.Rate~agn,
+          FUN=mean)
+```
+
+```{r}
+aggregate(data=deliv2data_noNA,
+          Death.Rate~dia,
+          FUN=mean)
+```
+
+```{r}
+library(dplyr)
+
+deliv2data_noNA$agn=dplyr::recode_factor(deliv2data_noNA$agn, 
+                  `2`='1',`1`='2',`5`='3',`4`='4',`3`='5' ,.ordered = T)
+deliv2data_noNA$dia=dplyr::recode_factor(deliv2data_noNA$dia, 
+                  `2`='1',`1`='2',`5`='3',`4`='4',`3`='5',.ordered = T)
+```
+
+```{r}
+fviz_silhouette(res.agnes)
+```
+
+```{r}
+fviz_silhouette(res.diana)
+```
+
+```{r}
+agnEval=data.frame(res.agnes$silinfo$widths)
+diaEval=data.frame(res.diana$silinfo$widths)
+
+agnPoor=rownames(agnEval[agnEval$sil_width<0,])
+diaPoor=rownames(diaEval[diaEval$sil_width<0,])
+
+###library("qpcR") 
+#bad_Clus=as.data.frame(qpcR:::cbind.na(sort(agnPoor),
+                                       sort(diaPoor)))##FAILED
+#names(bad_Clus)=c("agn","dia")
+#bad_Clus
+
+```
+
+```{r}
+##Comparing visually
+#Agnes
+base= ggplot(data=deliv2data_noNA,
+             aes(x=dim1, y=dim2,
+                 label=Country)) 
+agnPlot=base + labs(title = "AGNES") + geom_point(size=2,
+                                              aes(color=agn),
+                                              show.legend = T) 
+#Diana
+diaPlot=base + labs(title = "DIANA") + geom_point(size=2,
+                                              aes(color=dia),
+                                              show.legend = T) 
+
+library(ggpubr)
+
+ggarrange(agnPlot, diaPlot,ncol = 2,common.legend = T)
+
+```
+
+```{r}
+LABELdia=ifelse(deliv2data_noNA$Country%in%diaPoor,deliv2data_noNA$Country,"")
+LABELagn=ifelse(deliv2data_noNA$Country%in%agnPoor,deliv2data_noNA$Country,"")
+```
+
+```{r}
+library(ggrepel)
+diaPlot=diaPlot + 
+        geom_text_repel(aes(label=LABELdia),
+                        max.overlaps=50,
+                        min.segment.length =unit(0,'lines'))
+```
+
+```{r}
+agnPlot= agnPlot + 
+         geom_text_repel(aes(label=LABELagn),
+                         max.overlaps = 50,
+                         min.segment.length = unit(0, 'lines'))
+```
+
+```{r}
+ggarrange(agnPlot, 
+          diaPlot,
+          ncol = 2,
+          common.legend = T)
+```
+
+```{r}
+fviz_dend(res.agnes,
+          k=NumberOfClusterDesired, 
+          cex = 0.45, 
+          horiz = T,
+          main = "AGNES approach")
+```
+
+```{r}
+fviz_dend(res.diana,
+          k=NumberOfClusterDesired, 
+          cex = 0.45, 
+          horiz = T,
+          main = "DIANA approach")
+```
+
+```{r}
+table(deliv2data_noNA$Country,deliv2data_noNA$agn)
+```
+
+```{r}
+table(deliv2data_noNA$Country,deliv2data_noNA$dia)
+```
+
